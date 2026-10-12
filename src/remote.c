@@ -13,12 +13,16 @@
  *   POST /api/ra-login  user=U&password=P: signs in to RetroAchievements; the
  *                       password goes to retroachievements.org and nowhere else
  *   POST /api/ra-logout
+ *   POST /api/share-add     url=smb://...|nfs://...&user=U&password=P&domain=D: a line
+ *                           of network.cfg (the password stays on the console)
+ *   POST /api/share-remove  url=...: that line out
  * Changes are queued and applied by the main thread (remote_frame), so the
  * settings are never touched from two threads.
  */
 #include "remote.h"
 
 #include "app.h"
+#include "netfs.h"
 #include "ra/achievements.h"
 #include "net.h"
 #include "i18n.h"
@@ -547,6 +551,106 @@ static bool json_value(const char *json, const char *key, char *out, size_t size
     return true;
 }
 
+/* ---- network shares from the phone: lines of network.cfg ---- */
+
+static bool shares_changed;
+
+static bool share_word(const char *s)
+{
+    for (; *s; ++s)
+        if (*s == ' ' || *s == '\t' || *s == '\r' || *s == '\n')
+            return false;
+    return true;
+}
+
+/* network.cfg without the line for `url`, and with `line` added when there is one */
+static bool rewrite_shares(const char *url, const char *line)
+{
+    char path[PSXS5_PATH_MAX], temp[PSXS5_PATH_MAX + 8];
+    path_join(path, sizeof(path), app_paths()->root, "network.cfg");
+    snprintf(temp, sizeof(temp), "%s.new", path);
+    FILE *in = fopen(path, "r");
+    FILE *out = fopen(temp, "w");
+    if (!out)
+    {
+        if (in)
+            fclose(in);
+        return false;
+    }
+    if (!in)
+        fputs("# PSXS5's network shares, one a line (Settings > System > Network shares)\n", out);
+    char old[700];
+    size_t n = strlen(url);
+    while (in && fgets(old, sizeof(old), in))
+    {
+        const char *p = old;
+        while (*p == ' ' || *p == '\t')
+            ++p;
+        bool same = !strncmp(p, url, n) && (p[n] == ' ' || p[n] == '\t' || p[n] == '\r' || p[n] == '\n' || !p[n] ||
+                                             (p[n] == '/' && (p[n + 1] == ' ' || p[n + 1] == '\n' || !p[n + 1])));
+        if (!same)
+            fputs(old, out);
+    }
+    if (in)
+        fclose(in);
+    if (line)
+        fprintf(out, "%s\n", line);
+    bool ok = fclose(out) == 0 && rename(temp, path) == 0;
+    if (!ok)
+        remove(temp);
+    return ok;
+}
+
+static void serve_share(int fd, const char *req, size_t req_len, bool add)
+{
+    size_t len = 0;
+    char *body = read_body(fd, req, req_len, 4096, &len);
+    char url[256] = "", user[64] = "", password[128] = "", domain[64] = "";
+    bool have = body && form_field(body, "url", url, sizeof(url));
+    if (body)
+    {
+        form_field(body, "user", user, sizeof(user));
+        form_field(body, "password", password, sizeof(password));
+        form_field(body, "domain", domain, sizeof(domain));
+        memset(body, 0, len); /* the password was in there */
+        free(body);
+    }
+    size_t ul = strlen(url);
+    while (ul > 6 && url[ul - 1] == '/')
+        url[--ul] = '\0';
+    const char *error = NULL;
+    if (!have || !netfs_is_url(url) || ul < 9)
+        error = "Give the share as smb://host/share or nfs://host/export";
+    else if (!share_word(url) || !share_word(user) || !share_word(password) || !share_word(domain))
+        error = "Spaces can't be used in the address, the user name or the password";
+    char line[700];
+    if (!error && add)
+    {
+        int at = snprintf(line, sizeof(line), "%s", url);
+        if (user[0])
+            at += snprintf(line + at, sizeof(line) - (size_t)at, " user=%s", user);
+        if (password[0])
+            at += snprintf(line + at, sizeof(line) - (size_t)at, " password=%s", password);
+        if (domain[0])
+            snprintf(line + at, sizeof(line) - (size_t)at, " domain=%s", domain);
+    }
+    memset(password, 0, sizeof(password));
+    if (!error && !rewrite_shares(url, add ? line : NULL))
+        error = "Couldn't write network.cfg";
+    memset(line, 0, sizeof(line));
+    if (error)
+    {
+        char reply[200];
+        int n = snprintf(reply, sizeof(reply), "{\"ok\":false,\"error\":\"%s\"}", error);
+        respond(fd, "400 Bad Request", "application/json", reply, (size_t)n);
+        return;
+    }
+    SDL_LockMutex(lock);
+    shares_changed = true;
+    SDL_UnlockMutex(lock);
+    respond(fd, "200 OK", "application/json", "{\"ok\":true}", 11);
+}
+
 static void serve_ra_login(int fd, const char *req, size_t req_len)
 {
     size_t len = 0;
@@ -656,6 +760,10 @@ static void serve(int fd)
         serve_saves(fd, method, path, req, (size_t)n);
     else if (!strcmp(method, "POST") && !strcmp(path, "/api/ra-login"))
         serve_ra_login(fd, req, (size_t)n);
+    else if (!strcmp(method, "POST") && !strcmp(path, "/api/share-add"))
+        serve_share(fd, req, (size_t)n, true);
+    else if (!strcmp(method, "POST") && !strcmp(path, "/api/share-remove"))
+        serve_share(fd, req, (size_t)n, false);
     else if (!strcmp(method, "POST") && !strcmp(path, "/api/ra-logout"))
     {
         SDL_LockMutex(lock);
@@ -804,7 +912,17 @@ void remote_frame(void)
     }
     signing_out = logout_ready;
     logout_ready = false;
+    bool rescan = shares_changed;
+    shares_changed = false;
     SDL_UnlockMutex(lock);
+    if (rescan)
+    {
+        app_rescan(); /* reads network.cfg again and looks through the shares */
+        char msg[96];
+        snprintf(msg, sizeof(msg), tr("Network shares changed: %d games on the shelf"), app.library.count);
+        app_toast(msg);
+        refreshed = 0;
+    }
     if (signing_in)
     {
         ra_use_token(user_in, token_in);

@@ -1242,6 +1242,9 @@ static const Entry ENTRIES[] = {
       "棚のゲーム：%d本"}},
     {{"None", "Aucun", "Nenhuma", "Ninguna",
       "なし"}},
+    /* ---- 2.3: network shares */
+    {{"Network shares changed: %d games on the shelf", "Partages réseau modifiés : %d jeux sur l'étagère", "Partilhas de rede alteradas: %d jogos na prateleira", "Carpetas compartidas cambiadas: %d juegos en la estantería",
+      "ネットワーク共有を変更：棚のゲーム %d本"}},
 };
 
 #define ENTRY_COUNT (int)(sizeof(ENTRIES) / sizeof(ENTRIES[0]))

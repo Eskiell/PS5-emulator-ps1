@@ -112,6 +112,7 @@ function render() {
   rows.replaceChildren();
   if (tab === data.tabs.length) { renderSaves(rows); return; }
   if (data.ra && tab === data.ra.tab) renderAccount(rows);
+  if (data.net && tab === data.net.tab) renderShares(rows);
   let card = null;
   for (const r of data.tabs[tab].rows) {
     if (r.group || !card) {
@@ -208,6 +209,69 @@ function renderAccount(rows) {
   }
   const msg = el('div', 'help', accountMessage);
   row.appendChild(msg);
+  card.appendChild(row);
+  rows.appendChild(card);
+}
+
+/* ---- Network shares: games on a PC or NAS ---- */
+
+let sharesMessage = '';
+
+function renderShares(rows) {
+  rows.appendChild(el('div', 'group', 'Network shares'));
+  const card = el('div', 'card');
+  for (const s of data.net.shares) {
+    const row = el('div', 'row');
+    const line = el('div', 'info');
+    line.append(el('div', 'name', s.url), el('div', 'value', s.status || 'not tried yet'));
+    row.appendChild(line);
+    const out = el('button', '', 'Remove');
+    out.className = 'action';
+    out.onclick = async () => {
+      if (!confirm('Remove ' + s.url + ' from PSXS5? Nothing on the share is touched.')) return;
+      await fetch('/api/share-remove', {method: 'POST', body: new URLSearchParams({url: s.url})});
+      setTimeout(load, 1500);
+    };
+    row.appendChild(out);
+    card.appendChild(row);
+  }
+  const row = el('div', 'row');
+  row.appendChild(el('div', 'name', 'Add a share'));
+  row.appendChild(el('div', 'help', 'A shared folder on your PC or NAS: smb://192.168.1.10/Games/PS1 (Windows, most NAS), or nfs://192.168.1.10/volume1/ps1. Games play straight from it. The password stays on the console, in network.cfg.'));
+  const form = el('form');
+  const url = el('input');
+  url.placeholder = 'smb://192.168.1.10/Games/PS1';
+  url.autocapitalize = 'none';
+  const user = el('input');
+  user.placeholder = 'User name (SMB, optional)';
+  user.autocapitalize = 'none';
+  const pass = el('input');
+  pass.type = 'password';
+  pass.placeholder = 'Password (optional)';
+  pass.autocomplete = 'off';
+  const go = el('button', 'action', 'Add');
+  go.type = 'submit';
+  form.append(url, user, pass, go);
+  const msg = el('div', 'help', sharesMessage);
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    go.disabled = true;
+    sharesMessage = 'Adding, then looking through it…';
+    msg.textContent = sharesMessage;
+    try {
+      const r = await fetch('/api/share-add', {method: 'POST',
+        body: new URLSearchParams({url: url.value.trim(), user: user.value.trim(), password: pass.value})});
+      const j = await r.json();
+      sharesMessage = j.ok ? 'Added. The shelf shows its games in a moment.' : (j.error || 'It wasn’t added');
+    } catch (err) {
+      sharesMessage = 'PSXS5 isn’t answering.';
+    }
+    pass.value = '';
+    go.disabled = false;
+    msg.textContent = sharesMessage;
+    setTimeout(load, 3000);
+  };
+  row.append(form, msg);
   card.appendChild(row);
   rows.appendChild(card);
 }

@@ -1626,7 +1626,21 @@ int settings_json(char *out, size_t size)
     at = json_text(out, size, at, ra_user());
     PUT(",\"profile\":");
     at = json_text(out, size, at, profiles_name(profiles_current()));
-    PUT("}}");
+    /* the network shares, for the card on the System tab (never their passwords) */
+    int net_tab = 0;
+    for (int t = 0; t < TAB_COUNT; ++t)
+        if (TABS[t].rows == SYSTEM)
+            net_tab = t;
+    PUT("},\"net\":{\"tab\":%d,\"shares\":[", net_tab);
+    for (int i = 0; i < netfs_share_count() && at < size; ++i)
+    {
+        PUT("%s{\"url\":", i ? "," : "");
+        at = json_text(out, size, at, netfs_share_url(i));
+        PUT(",\"status\":");
+        at = json_text(out, size, at, netfs_share_status(i));
+        PUT("}");
+    }
+    PUT("]}}");
     return (int)(at < size ? at : size - 1);
 }
 
