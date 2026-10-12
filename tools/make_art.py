@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-# PSXS5 - draws the home-screen art (icon0.png and the two 3840x2160 backgrounds).
+# PSXS5 - prepares the launcher icon and draws the two 3840x2160 backgrounds.
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Original PSXS5 artwork, generated so it can be tweaked and rebuilt:
+"""PSXS5 presentation assets, generated so they can be rebuilt:
 
     python tools/make_art.py            -> sce_sys/icon0.png
                                            sce_sys/background-source.png (selected)
                                            sce_sys/launch-background-source.png (launching)
 Convert the two backgrounds to pic0.dds / pic1.dds with texconv (see README).
 
-The look matches the in-app shelf: a deep blue gradient, a glowing CD with a
-rainbow sheen and the four face-button shapes in their classic colours.
+The launcher icon is resized from assets/branding/ps1-logo.png. The backgrounds
+and banner use the in-app shelf's deep blue palette and disc artwork.
 """
 import math
 from pathlib import Path
@@ -17,6 +17,7 @@ from pathlib import Path
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
+ICON_SOURCE = ROOT / "assets/branding/ps1-logo.png"
 FONT_BOLD = str(ROOT / "assets/fonts/Inter-600.ttf")
 FONT_REGULAR = str(ROOT / "assets/fonts/Inter-400.ttf")
 
@@ -180,18 +181,11 @@ def launch_background():
 
 
 def icon():
-    """512x512 home-screen tile: must read at thumbnail size."""
-    S = 2
-    w = 512 * S
-    img = vignette(gradient(w, w), 0.6)
-    img = add_disc_with_glow(img, w // 2, int(w * 0.42), int(w * 0.30))
-    img = add_symbols(img, [
-        ("triangle", w // 2, int(w * 0.085), int(w * 0.045), GREEN),
-        ("circle", int(w * 0.84), int(w * 0.42), int(w * 0.045), RED),
-        ("square", int(w * 0.16), int(w * 0.42), int(w * 0.045), PINK),
-    ], int(w * 0.012), int(w * 0.012))
-    img = text(img, (w // 2, int(w * 0.94)), "PSXS5", int(w * 0.2), FONT_BOLD, anchor="ms", glow=int(w * 0.012))
-    return img.convert("RGB").resize((512, 512), Image.LANCZOS)
+    """512x512 home-screen tile from the project's source logo."""
+    with Image.open(ICON_SOURCE) as source:
+        if source.width != source.height:
+            raise ValueError(f"launcher logo must be square: {ICON_SOURCE}")
+        return source.convert("RGB").resize((512, 512), Image.LANCZOS)
 
 
 def banner():
