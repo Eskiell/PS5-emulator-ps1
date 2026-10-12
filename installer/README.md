@@ -11,8 +11,10 @@ On each run it:
    and reads the `PSXS5-vX.Y.Z.zip` asset's size and SHA-256 from GitHub.
 2. Compares the tag with `/data/homebrew/PPSA97510/.psxs5-version`. An
    installation without that marker is treated as an older manual install.
-3. If PSXS5 is open, asks you to close it and waits up to five minutes before
-   downloading. It stops if the console cannot confirm that the app is closed.
+3. Checks the PS5's process list for the PSXS5 title ID. If the app is open,
+   asks you to close it and waits up to five minutes before downloading. It
+   stops if the process check is inconclusive. A leftover sandbox folder does
+   not count as a running app.
 4. Downloads the ZIP over verified HTTPS, with a size limit and SHA-256 check.
 5. Validates the archive's paths, file types, title ID and version, then
    extracts it under `/data/PSXS5-Installer/staged`.

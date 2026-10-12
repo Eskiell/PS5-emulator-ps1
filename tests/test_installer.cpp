@@ -6,11 +6,14 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <atomic>
 #include <string>
 #include <thread>
 #include <chrono>
 #include <sys/stat.h>
 #include <unistd.h>
+
+static std::atomic<int> app_running{0};
 
 extern "C" {
 #include "../installer/src/github.h"
@@ -20,6 +23,7 @@ int tls_global_init(void) { return -1; }
 void tls_global_free(void) {}
 const char *plat_root(void) { return ""; }
 void plat_notify_text(const char *) {}
+int plat_app_running(const char *) { return app_running.load(); }
 void plat_init(void) {}
 }
 
@@ -89,10 +93,11 @@ int main() {
     p.archive = p.work + "/release.zip";
     p.staged = p.work + "/staged";
     p.backup = p.work + "/backup";
-    p.sandboxes = base + "/mnt/sandbox";
     CHECK(mkdir(p.data.c_str(), 0755) == 0);
     CHECK(mkdir((base + "/mnt").c_str(), 0755) == 0);
-    CHECK(mkdir(p.sandboxes.c_str(), 0755) == 0);
+    CHECK(mkdir((base + "/mnt/sandbox").c_str(), 0755) == 0);
+    // A leftover sandbox directory must not be mistaken for a live process.
+    CHECK(mkdir((base + "/mnt/sandbox/PPSA97510_000").c_str(), 0755) == 0);
     CHECK(mkdir((p.data + "/PSXS5").c_str(), 0755) == 0);
     CHECK(mkdir((p.data + "/PSXS5/games").c_str(), 0755) == 0);
     write_file(p.data + "/PSXS5/games/user-game.bin", "personal data");
@@ -117,24 +122,21 @@ int main() {
 
     // A running app cannot be replaced.
     make_zip(p.archive, "v2.2.1", "second program");
-    const std::string sandbox = p.sandboxes + "/PPSA97510_000";
-    CHECK(mkdir(sandbox.c_str(), 0755) == 0);
-    CHECK(!psxs5_installer::wait_for_app_exit(p, 0, error));
+    app_running = 1;
+    CHECK(!psxs5_installer::wait_for_app_exit(0, error));
     CHECK(error.find("still open") != std::string::npos);
     CHECK(!psxs5_installer::install_archive(p, "v2.2.1", error));
     CHECK(read_file(p.app + "/eboot.bin") == "first program");
-    int close_result = -1;
-    std::thread close_app([&sandbox, &close_result] {
+    std::thread close_app([] {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        close_result = rmdir(sandbox.c_str());
+        app_running = 0;
     });
-    CHECK(psxs5_installer::wait_for_app_exit(p, 2, error));
+    CHECK(psxs5_installer::wait_for_app_exit(2, error));
     close_app.join();
-    CHECK(close_result == 0);
-    CHECK(rmdir(p.sandboxes.c_str()) == 0);
-    CHECK(!psxs5_installer::wait_for_app_exit(p, 0, error));
+    app_running = -1;
+    CHECK(!psxs5_installer::wait_for_app_exit(0, error));
     CHECK(error.find("Cannot check") != std::string::npos);
-    CHECK(mkdir(p.sandboxes.c_str(), 0755) == 0);
+    app_running = 0;
 
     CHECK(psxs5_installer::install_archive(p, "v2.2.1", error));
     CHECK(read_file(p.app + "/eboot.bin") == "second program");

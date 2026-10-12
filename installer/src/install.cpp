@@ -12,7 +12,6 @@ extern "C" {
 }
 #include "../../examples/self-update-helper/archive.hpp"
 #include "../../examples/self-update-helper/files.hpp"
-#include "../../examples/self-update-helper/updater.hpp"
 #include <atomic>
 #include <cerrno>
 #include <cstdint>
@@ -172,7 +171,6 @@ Paths default_paths() {
     p.archive = p.work + "/release.zip";
     p.staged = p.work + "/staged";
     p.backup = p.work + "/backup";
-    p.sandboxes = prefix + "/mnt/sandbox";
     return p;
 }
 
@@ -248,8 +246,8 @@ bool installed_tag(const Paths &p, std::string &tag) {
     return read_version(p.app + "/.psxs5-version", tag);
 }
 
-bool wait_for_app_exit(const Paths &p, unsigned seconds, std::string &error) {
-    int running = self_update::title_running(p.sandboxes, TITLE_ID);
+bool wait_for_app_exit(unsigned seconds, std::string &error) {
+    int running = plat_app_running(TITLE_ID);
     if (running < 0) {
         error = "Cannot check whether PSXS5 is open; no app files were replaced";
         return false;
@@ -259,7 +257,7 @@ bool wait_for_app_exit(const Paths &p, unsigned seconds, std::string &error) {
     notify("PSXS5 Installer: close PSXS5 to continue");
     for (unsigned elapsed = 0; elapsed < seconds; ++elapsed) {
         sleep(1);
-        running = self_update::title_running(p.sandboxes, TITLE_ID);
+        running = plat_app_running(TITLE_ID);
         if (running == 0)
             return true;
         if (running < 0) {
@@ -276,7 +274,7 @@ bool install_archive(const Paths &p, const std::string &tag, std::string &error)
         error = "The release tag is not a stable version";
         return false;
     }
-    if (!wait_for_app_exit(p, 0, error)) {
+    if (!wait_for_app_exit(0, error)) {
         return false;
     }
     if (!self_update::remove_tree(p.staged)) {
@@ -311,7 +309,7 @@ bool install_archive(const Paths &p, const std::string &tag, std::string &error)
         return false;
     }
     // Re-check after extraction; the app must be closed throughout the replacement.
-    if (!wait_for_app_exit(p, 0, error)) {
+    if (!wait_for_app_exit(0, error)) {
         (void)self_update::remove_tree(p.staged);
         return false;
     }
@@ -386,7 +384,7 @@ int run() {
         unlock(lock_fd);
         return 0;
     }
-    if (!wait_for_app_exit(p, 300, error)) {
+    if (!wait_for_app_exit(300, error)) {
         notify("PSXS5 Installer: %s", error.c_str());
         tls_global_free();
         unlock(lock_fd);

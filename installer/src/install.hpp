@@ -12,7 +12,6 @@ struct Paths {
     std::string archive;
     std::string staged;
     std::string backup;
-    std::string sandboxes;
 };
 
 Paths default_paths();
@@ -21,7 +20,7 @@ bool newer_than(const std::string &available, const std::string &installed);
 bool prepare(const Paths &paths, std::string &error);
 bool recover(const Paths &paths, std::string &error);
 bool installed_tag(const Paths &paths, std::string &tag);
-bool wait_for_app_exit(const Paths &paths, unsigned seconds, std::string &error);
+bool wait_for_app_exit(unsigned seconds, std::string &error);
 bool install_archive(const Paths &paths, const std::string &tag, std::string &error);
 int run();
 }
