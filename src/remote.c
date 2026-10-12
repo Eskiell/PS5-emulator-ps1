@@ -637,6 +637,8 @@ static void serve_share(int fd, const char *req, size_t req_len, bool add)
     memset(password, 0, sizeof(password));
     if (!error && !rewrite_shares(url, add ? line : NULL))
         error = "Couldn't write network.cfg";
+    psxs5_log("remote: share %s %s%s%s (network.cfg in %s)", add ? "add" : "remove", url[0] ? url : "(none)",
+              error ? ": " : "", error ? error : "", app.paths.root);
     memset(line, 0, sizeof(line));
     if (error)
     {
