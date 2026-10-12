@@ -1,4 +1,4 @@
-/* PSX1 Installer: PS5 implementation of plat.h.
+/* PSXS5 Installer: PS5 implementation of plat.h.
  *
  * The notification request layout follows the payload SDK's samples.
  * sysctl(CTL_KERN, KERN_ARND) and signal() use the SDK's system headers.

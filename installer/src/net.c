@@ -1,4 +1,4 @@
-/* PSX1 Installer: TCP connections with time limits. */
+/* PSXS5 Installer: TCP connections with time limits. */
 #include "net.h"
 
 #include "util.h"

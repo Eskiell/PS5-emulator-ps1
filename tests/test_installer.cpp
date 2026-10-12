@@ -83,7 +83,7 @@ int main() {
     p.data = base + "/data";
     p.homebrew = p.data + "/homebrew";
     p.app = p.homebrew + "/PPSA97510";
-    p.work = p.data + "/PSX1-Installer";
+    p.work = p.data + "/PSXS5-Installer";
     p.archive = p.work + "/release.zip";
     p.staged = p.work + "/staged";
     p.backup = p.work + "/backup";

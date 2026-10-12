@@ -1,4 +1,4 @@
-/* PSX1 Installer: the latest stable release from Eskiell/PS5-emulator-ps1. */
+/* PSXS5 Installer: the latest stable release from Eskiell/PS5-emulator-ps1. */
 #pragma once
 
 #include <stdint.h>
