@@ -9,6 +9,9 @@
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 tag=${RADV_RELEASE_TAG:-deps-radv-7b59ef27}
+# A fork's GITHUB_REPOSITORY has no upstream dependency releases by default.
+# Keep the pinned driver source explicit; a custom build may override it.
+release_repo=${RADV_RELEASE_REPO:-SynoPiia/PSXS5}
 native="$root/.deps/native"
 sdk="$native/ps5-payload-sdk"
 
@@ -21,7 +24,7 @@ fi
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 echo "==> [vulkan] downloading $tag"
-gh release download "$tag" -R "${GITHUB_REPOSITORY:-SynoPiia/PSXS5}" -p '*.tar.zst' -D "$work"
+gh release download "$tag" -R "$release_repo" -p '*.tar.zst' -D "$work"
 
 rm -rf "$native/radv-release"
 tar --zstd -xf "$work/radv-release.tar.zst" -C "$native"

@@ -167,3 +167,6 @@ No proprietary runtime module, encryption key, or game file is included.
 | [Noto Sans JP](https://github.com/notofonts/noto-cjk) (subset by `tools/make_jp_font.py`) | Japanese interface text (`assets/fonts/NotoSansJP-PSXS5.ttf`) | SIL Open Font License 1.1 (`assets/fonts/OFL-NotoSansJP.txt`) |
 | [Tabler Icons](https://tabler.io/icons) 3.31.0 (subset by `tools/make_icon_font.py`) | interface icons (`assets/fonts/tabler-psxs5.ttf`) | MIT (`assets/fonts/LICENSE-tabler-icons.txt`) |
 | [QR Code generator](https://www.nayuki.io/page/qr-code-generator-library) by Project Nayuki | the phone page QR code (`third_party/qrcodegen`) | MIT |
+| [PS5SX2 Installer](https://github.com/Swordpdf/PS5SX2/tree/main/ps5/installer) by Swordpdf | HTTPS, GitHub release parsing and PS5 notification code adapted in `installer/src` | GPL-3.0 |
+| Mozilla CA bundle distributed with the PS5SX2 installer | Trusted CA certificates for the installer's HTTPS client (`installer/ca/cacert.pem`) | Certificates from their respective authorities |
+| [Mbed TLS](https://github.com/Mbed-TLS/mbedtls) 3.6.7 | TLS for the standalone installer; fetched with a pinned SHA-256, not stored in this repository | Apache-2.0 |

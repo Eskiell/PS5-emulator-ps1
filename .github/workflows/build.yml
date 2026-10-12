@@ -8,7 +8,7 @@ name: Build PSXS5
 
 on:
   push:
-    branches: [main, v2-vulkan]
+    branches: [main, dev, v2-vulkan]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -58,6 +58,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: make
+
+      - name: Build standalone installer
+        run: make installer
+
+      - name: Test installer filesystem and ZIP handling
+        run: make test-installer
+
+      - name: Upload installer ELF
+        uses: actions/upload-artifact@v4
+        with:
+          name: PSX1Installer
+          path: build/installer/PSX1Installer.elf
+          if-no-files-found: error
 
       - name: Check system module imports
         run: python3 tools/check-imports.py dist/PPSA97510/eboot.bin
@@ -118,11 +131,17 @@ jobs:
         with:
           name: PSXS5-symbols
           path: .
+      - uses: actions/download-artifact@v4
+        with:
+          name: PSX1Installer
+          path: .
       - name: Package
         run: |
+          grep -Fqx "#define PSXS5_VERSION \"${GITHUB_REF_NAME#v}\"" src/psxs5.h
           name=PSXS5-${GITHUB_REF_NAME}
           mkdir -p "$name/tools"
           cp -r app/PPSA97510 "$name/"
+          printf '%s\n' "$GITHUB_REF_NAME" > "$name/PPSA97510/.psxs5-version"
           cp tools/psxs5_sync.py tools/psx_disc.py "$name/tools/"
           cp README.md LICENSE THIRD_PARTY_NOTICES.md "$name/"
           zip -qr "$name.zip" "$name"
@@ -133,7 +152,4 @@ jobs:
         run: |
           notes=docs/releases/${GITHUB_REF_NAME}.md
           [ -f "$notes" ] || notes=/dev/null
-          # --latest=false: PSXS5 2.0.0 updates from the release marked Latest and its
-          # updater leaves the app unable to start, so v2.0.0 stays Latest; 2.1.1 and
-          # later read the whole list of releases.
-          gh release create "$GITHUB_REF_NAME" "$ZIP" PSXS5-symbols.txt --title "PSXS5 ${GITHUB_REF_NAME#v}" --notes-file "$notes" --latest=false
+          gh release create "$GITHUB_REF_NAME" "$ZIP" PSXS5-symbols.txt PSX1Installer.elf --title "PSXS5 ${GITHUB_REF_NAME#v}" --notes-file "$notes"
