@@ -81,7 +81,7 @@ RUNTIME_INPUTS := tools/rebuild-libc.sh tools/build-host-tools.sh tools/ninja-bu
 	$(wildcard tooling/native/runtime/*.txt)
 HOST_UNIT_TEST := build/tests/demo_renderer_tests
 
-.PHONY: all app build init doctor test test-deps test-unit test-integration libc deps pacbrew pacbrew-list assets-check format format-check tidy lint check ffpkg ffpfsc packages sandbox-elevation-ffpfsc update-check-example test-update-check self-update-helper self-update-example test-self-update deploy undeploy clean distclean help
+.PHONY: all app build init doctor test test-deps test-unit test-integration libc deps pacbrew pacbrew-list assets-check format format-check tidy lint check ffpkg ffpfsc packages sandbox-elevation-ffpfsc update-check-example test-update-check self-update-helper self-update-example test-self-update test-installer installer deploy undeploy clean distclean help
 
 all: app
 build: app
@@ -94,7 +94,7 @@ doctor:
 	@printf '%s\n' '==> [doctor] Checking the Linux/WSL host without changing it'
 	@bash tools/doctor.sh
 
-test: test-unit test-integration test-elevation test-update-check test-self-update
+test: test-unit test-integration test-elevation test-update-check test-self-update test-installer
 
 .PHONY: test-elevation
 test-elevation:
@@ -196,6 +196,15 @@ update-check-example: $(RUNTIME)
 		bash tools/build.sh Folder
 
 SELF_UPDATE_HELPER := build/self-update/self-updater.elf
+
+installer:
+	@bash installer/fetch-deps.sh
+	@$(MAKE) --no-print-directory -C installer ps5 \
+		PS5_PAYLOAD_SDK="$(CURDIR)/.deps/native/ps5-payload-sdk"
+	@python3 tools/validate-loader-elf.py build/installer/PSXS5Installer.elf
+
+test-installer:
+	@bash installer/test-host.sh
 
 self-update-helper:
 	@printf '%s\n' '==> [self-update] Building the helper for the payload loader'
@@ -316,6 +325,8 @@ help:
 	  'make test-update-check     Run the update-check host tests' \
 	  'make self-update-example   Build the self-update example title and its helper' \
 	  'make test-self-update      Run the self-update host tests' \
+	  'make installer              Build PSXS5Installer.elf for the payload loader' \
+	  'make test-installer         Run installer ZIP and filesystem tests' \
 	  'make deploy PS5_HOST=<address>  Build and FTP-deploy the app folder' \
 	  'make undeploy PS5_HOST=<address>  Remove this title from /data/homebrew' \
 	  'Build variables:     APP_DEFINITIONS, APP_INCLUDE_PATHS, APP_STATIC_ARCHIVES, APP_RUNTIME_MODULES, APP_WRAP_SYMBOLS, APP_LAPY_HELPER' \

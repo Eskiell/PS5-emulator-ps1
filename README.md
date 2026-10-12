@@ -124,6 +124,10 @@ PSXS5 is a hobby project, made for the love of the PS1 library. No company or sc
    ```bash
    python tools/psxs5_sync.py app --app-dir PPSA97510 --host <PS5 IP>
    ```
+   **Alternative:** send `PSXS5Installer.elf` from a release to the console's
+   payload loader. It checks this fork's latest release and installs or updates
+   the app directly. See [installer details](installer/README.md). It needs no
+   FTP upload.
 3. **Restart ShadowMountPlus** (or the console). PSXS5 appears on the home screen.
 4. **Start PSXS5 once.** It creates its folders in `/data/PSXS5/` (see [below](#folders-on-the-console)) and shows an empty shelf that tells you where games go.
 5. **Add your games** to `/data/PSXS5/games/`, **one folder per game**, with every file of the game inside it:
