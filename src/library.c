@@ -5,6 +5,7 @@
 #include "library.h"
 
 #include "disc.h"
+#include "netfs.h"
 
 #include <ctype.h>
 #include <dirent.h>
@@ -142,13 +143,13 @@ static void finish_game(Game *g)
     else
     {
         path_join(txt, sizeof(txt), g->folder, "serial.txt");
-        FILE *f = fopen(txt, "r");
+        VFile *f = vf_open(txt);
         if (f)
         {
             char line[64] = "";
-            if (fgets(line, sizeof(line), f) && disc_format_serial(line, serial, sizeof(serial)))
+            if (vf_gets(line, sizeof(line), f) && disc_format_serial(line, serial, sizeof(serial)))
                 str_copy(g->serial, sizeof(g->serial), serial);
-            fclose(f);
+            vf_close(f);
         }
     }
 
@@ -199,24 +200,26 @@ typedef char NameBuf[256];
 /* Reads up to MAX_DIR_FILES loadable entries of `dir`, sorted by name. */
 static int list_images(const char *dir, NameBuf *names)
 {
-    DIR *d = opendir(dir);
+    VDir *d = vd_open(dir); /* a local folder or one on a network share */
     if (!d)
         return 0;
     int n = 0;
-    struct dirent *e;
-    while ((e = readdir(d)) && n < MAX_DIR_FILES)
+    const char *name;
+    while ((name = vd_next(d, NULL)) && n < MAX_DIR_FILES)
     {
-        if (e->d_name[0] == '.' || image_rank(e->d_name) == 0)
+        if (name[0] == '.' || image_rank(name) == 0)
             continue;
-        str_copy(names[n++], sizeof(NameBuf), e->d_name);
+        str_copy(names[n++], sizeof(NameBuf), name);
     }
-    closedir(d);
+    vd_close(d);
     qsort(names, (size_t)n, sizeof(NameBuf), cmp_names);
     return n;
 }
 
 static bool write_m3u(const char *path, NameBuf *discs, int count)
 {
+    if (netfs_is_url(path))
+        return false; /* shares are read-only here: the game starts from disc 1 */
     FILE *f = fopen(path, "w");
     if (!f)
         return false;
@@ -268,15 +271,15 @@ static void scan_game_folder(Library *lib, const char *dir, const char *folder_n
     {
         path_join(g->path, sizeof(g->path), dir, names[best]);
         /* count lines for the disc indicator */
-        FILE *f = fopen(g->path, "r");
+        VFile *f = vf_open(g->path);
         if (f)
         {
             char line[512];
             int lines = 0;
-            while (fgets(line, sizeof(line), f))
+            while (vf_gets(line, sizeof(line), f))
                 if (line[0] && line[0] != '#' && line[0] != '\n' && line[0] != '\r')
                     ++lines;
-            fclose(f);
+            vf_close(f);
             g->discs = lines > 0 ? lines : 1;
         }
     }
@@ -303,22 +306,36 @@ static void scan_game_folder(Library *lib, const char *dir, const char *folder_n
     finish_game(g);
 }
 
+/* the folders among a root's entries (names sorted, as the entries are) */
+static NameBuf root_dirs[1024];
+static int root_dir_count;
+
+static bool is_root_dir(const char *name)
+{
+    return bsearch(name, root_dirs, (size_t)root_dir_count, sizeof(NameBuf), cmp_names) != NULL;
+}
+
 static void scan_root(Library *lib, const char *root)
 {
-    DIR *d = opendir(root);
+    VDir *d = vd_open(root); /* a local folder or one on a network share */
     if (!d)
         return;
     static NameBuf entries[1024];
     int n = 0;
-    struct dirent *e;
-    while ((e = readdir(d)) && n < 1024)
+    root_dir_count = 0;
+    const char *name;
+    bool dir = false;
+    while ((name = vd_next(d, &dir)) && n < 1024)
     {
-        if (e->d_name[0] == '.')
+        if (name[0] == '.')
             continue;
-        str_copy(entries[n++], sizeof(NameBuf), e->d_name);
+        str_copy(entries[n++], sizeof(NameBuf), name);
+        if (dir)
+            str_copy(root_dirs[root_dir_count++], sizeof(NameBuf), name);
     }
-    closedir(d);
+    vd_close(d);
     qsort(entries, (size_t)n, sizeof(NameBuf), cmp_names);
+    qsort(root_dirs, (size_t)root_dir_count, sizeof(NameBuf), cmp_names);
 
     bool root_has_sheet = false;
     for (int i = 0; i < n; ++i)
@@ -338,10 +355,10 @@ static void scan_root(Library *lib, const char *root)
              * only when every disc it lists is here */
             char m3u[PSXS5_PATH_MAX], line[300];
             path_join(m3u, sizeof(m3u), root, entries[i]);
-            FILE *f = fopen(m3u, "r");
+            VFile *f = vf_open(m3u);
             int listed[MAX_DIR_FILES], count = 0;
             bool valid = f != NULL;
-            while (f && fgets(line, sizeof(line), f))
+            while (f && vf_gets(line, sizeof(line), f))
             {
                 line[strcspn(line, "\r\n")] = '\0';
                 if (!line[0] || line[0] == '#')
@@ -356,7 +373,7 @@ static void scan_root(Library *lib, const char *root)
                     listed[count++] = found;
             }
             if (f)
-                fclose(f);
+                vf_close(f);
             if (valid && count > 0)
                 for (int k = 0; k < count; ++k)
                     skip[listed[k]] = true;
@@ -400,7 +417,7 @@ static void scan_root(Library *lib, const char *root)
         char m3u_name[200], m3u[PSXS5_PATH_MAX];
         snprintf(m3u_name, sizeof(m3u_name), "%.190s.m3u", title);
         path_join(m3u, sizeof(m3u), root, m3u_name);
-        if (path_exists(m3u))
+        if (vf_exists(m3u))
         {
             /* that name is taken by a playlist that didn't work here: keep it */
             snprintf(m3u_name, sizeof(m3u_name), "%.180s (PSXS5).m3u", title);
@@ -426,7 +443,7 @@ static void scan_root(Library *lib, const char *root)
             continue;
         char full[PSXS5_PATH_MAX];
         path_join(full, sizeof(full), root, entries[i]);
-        if (path_is_dir(full))
+        if (is_root_dir(entries[i]))
         {
             /* a PSXS5 folder copied whole to a USB drive: its bios/, saves/... aren't games
              * ("games" is scanned as a root of its own) */
@@ -455,13 +472,12 @@ static void scan_root(Library *lib, const char *root)
         if (rank == 6)
         {
             /* a playlist: one disc per line */
-            FILE *f = fopen(full, "r");
+            VFile *f = vf_open(full);
             char line[300];
             int lines = 0;
-            while (f && fgets(line, sizeof(line), f))
+            while (f && vf_gets(line, sizeof(line), f))
                 lines += line[0] && line[0] != '\n' && line[0] != '\r' && line[0] != '#';
-            if (f)
-                fclose(f);
+            vf_close(f);
             g->discs = lines > 0 ? lines : 1;
         }
         finish_game(g);
@@ -477,7 +493,7 @@ void library_scan(Library *lib, const char *const *roots, int root_count)
 {
     lib->count = 0;
     for (int i = 0; i < root_count; ++i)
-        if (path_is_dir(roots[i]))
+        if (netfs_is_url(roots[i]) || path_is_dir(roots[i]))
             scan_root(lib, roots[i]);
     if (lib->count > 1)
         qsort(lib->games, (size_t)lib->count, sizeof(Game), cmp_games);

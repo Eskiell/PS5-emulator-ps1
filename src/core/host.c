@@ -10,6 +10,8 @@
  * answers "unsupported" as libretro allows.
  */
 #include "host.h"
+#include "vfs.h"
+#include "../netfs.h"
 
 #include "../gamedb.h"
 
@@ -652,6 +654,10 @@ static bool RETRO_CALLCONV environment(unsigned cmd, void *data)
     case RETRO_ENVIRONMENT_GET_RUMBLE_INTERFACE:
         ((struct retro_rumble_interface *)data)->set_rumble_state = rumble_cb;
         return true;
+    case RETRO_ENVIRONMENT_GET_VFS_INTERFACE:
+        /* only with network shares set up: the emulators keep their own file
+         * access otherwise (PCSX-ReARMed would send every file through it) */
+        return netfs_share_count() > 0 && vfs_interface(data);
     case RETRO_ENVIRONMENT_GET_CAN_DUPE:
         *(bool *)data = true;
         return true;

@@ -6,6 +6,7 @@
  * live in src/ui (shelf, settings, in-game menu and cheats).
  * Emulation is PCSX-ReARMed, linked statically and driven through libretro.
  */
+#include "netfs.h"
 #include "app.h"
 
 #include "config.h"
@@ -345,7 +346,7 @@ static void find_bios(void)
 void app_rescan(void)
 {
     static char mount_roots[MOUNT_COUNT * 3][PSXS5_PATH_MAX];
-    const char *roots[2 + MOUNT_COUNT * 3];
+    const char *roots[2 + MOUNT_COUNT * 3 + NETFS_MAX_SHARES];
     int root_count = 0;
     roots[root_count++] = app.paths.games;
     static char home_games[PSXS5_PATH_MAX];
@@ -361,6 +362,15 @@ void app_rescan(void)
                 roots[root_count++] = dir;
         }
     find_bios();
+    /* network shares (network.cfg beside the settings), read again at each scan */
+    if (!app.sandboxed)
+    {
+        char cfg[PSXS5_PATH_MAX];
+        path_join(cfg, sizeof(cfg), app.paths.root, "network.cfg");
+        netfs_load(cfg);
+        for (int i = 0; i < netfs_share_count(); ++i)
+            roots[root_count++] = netfs_share_url(i);
+    }
     char index[PSXS5_PATH_MAX];
     path_join(index, sizeof(index), app.paths.root, "library.txt");
     if (app.sandboxed)

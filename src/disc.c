@@ -6,6 +6,7 @@
  * That serial is region-exact, so covers are matched by it.
  */
 #include "disc.h"
+#include "netfs.h"
 
 #include "core/host.h"
 
@@ -64,13 +65,13 @@ bool disc_format_serial(const char *raw, char *serial, size_t size)
 
 typedef struct
 {
-    FILE *f;
+    VFile *f; /* a local file or one on a network share */
     long sector, offset;
 } Image;
 
 static bool image_open(Image *img, const char *path)
 {
-    img->f = fopen(path, "rb");
+    img->f = vf_open(path);
     if (!img->f)
         return false;
     /* raw Mode 2, raw Mode 1, cooked, raw with subchannel (2448), Mode 2 without sync (2336) */
@@ -78,15 +79,15 @@ static bool image_open(Image *img, const char *path)
     for (size_t i = 0; i < sizeof(layouts) / sizeof(layouts[0]); ++i)
     {
         uint8_t id[6];
-        fseek(img->f, 16 * layouts[i][0] + layouts[i][1], SEEK_SET);
-        if (fread(id, 1, 6, img->f) == 6 && memcmp(id + 1, "CD001", 5) == 0)
+        vf_seek(img->f, 16 * layouts[i][0] + layouts[i][1]);
+        if (vf_read(img->f, id, 6) == 6 && memcmp(id + 1, "CD001", 5) == 0)
         {
             img->sector = layouts[i][0];
             img->offset = layouts[i][1];
             return true;
         }
     }
-    fclose(img->f);
+    vf_close(img->f);
     return false;
 }
 
@@ -95,8 +96,7 @@ static bool image_read(Image *img, uint32_t lba, uint8_t *out, size_t length)
     while (length > 0)
     {
         size_t chunk = length < 2048 ? length : 2048;
-        if (fseek(img->f, (long)lba * img->sector + img->offset, SEEK_SET) != 0 ||
-            fread(out, 1, chunk, img->f) != chunk)
+        if (!vf_seek(img->f, (int64_t)lba * img->sector + img->offset) || vf_read(img->f, out, chunk) != chunk)
             return false;
         out += chunk;
         length -= chunk;
@@ -172,7 +172,7 @@ static bool read_iso(const char *path, char *serial, size_t size)
     if (!image_open(&img, path))
         return false;
     bool ok = find_serial(read_image, &img, serial, size);
-    fclose(img.f);
+    vf_close(img.f);
     return ok;
 }
 
@@ -189,17 +189,17 @@ static bool read_through_core(const char *path, char *serial, size_t size)
 
 static bool read_pbp(const char *path, char *serial, size_t size)
 {
-    FILE *f = fopen(path, "rb");
+    VFile *f = vf_open(path);
     if (!f)
         return false;
     uint8_t head[40];
     bool ok = false;
-    if (fread(head, 1, 40, f) == 40 && memcmp(head, "\0PBP", 4) == 0)
+    if (vf_read(f, head, 40) == 40 && memcmp(head, "\0PBP", 4) == 0)
     {
         uint32_t sfo_off = le32(head + 8), sfo_end = le32(head + 12);
         uint32_t sfo_len = sfo_end > sfo_off ? sfo_end - sfo_off : 0;
         uint8_t *sfo = (sfo_len > 20 && sfo_len < 65536) ? malloc(sfo_len) : NULL;
-        if (sfo && fseek(f, (long)sfo_off, SEEK_SET) == 0 && fread(sfo, 1, sfo_len, f) == sfo_len)
+        if (sfo && vf_seek(f, sfo_off) && vf_read(f, sfo, sfo_len) == sfo_len)
         {
             uint32_t keys = le32(sfo + 8), data = le32(sfo + 12), count = le32(sfo + 16);
             for (uint32_t i = 0; i < count && 20 + i * 16 + 16 <= sfo_len; ++i)
@@ -217,18 +217,18 @@ static bool read_pbp(const char *path, char *serial, size_t size)
         }
         free(sfo);
     }
-    fclose(f);
+    vf_close(f);
     return ok;
 }
 
 /* First FILE "..." of a cue sheet, or first entry of an m3u, next to `path`. */
 static bool first_referenced(const char *path, bool cue, char *out, size_t size)
 {
-    FILE *f = fopen(path, "r");
+    VFile *f = vf_open(path);
     if (!f)
         return false;
     char line[512], name[512] = "";
-    while (fgets(line, sizeof(line), f) && !name[0])
+    while (vf_gets(line, sizeof(line), f) && !name[0])
     {
         line[strcspn(line, "\r\n")] = '\0';
         if (cue)
@@ -261,7 +261,7 @@ static bool first_referenced(const char *path, bool cue, char *out, size_t size)
         else if (line[0] && line[0] != '#')
             str_copy(name, sizeof(name), line);
     }
-    fclose(f);
+    vf_close(f);
     if (!name[0])
         return false;
     char dir[PSXS5_PATH_MAX];
@@ -298,23 +298,23 @@ bool disc_read_serial(const char *path, char *serial, size_t size)
         char *dot = strrchr(base, '.');
         if (dot)
             *dot = '\0';
-        DIR *d = opendir(dir);
+        VDir *d = vd_open(dir);
         if (!d)
             return false;
         char same[PSXS5_PATH_MAX] = "", only[PSXS5_PATH_MAX] = "";
         int bins = 0;
-        struct dirent *e;
-        while ((e = readdir(d)) != NULL)
+        const char *entry;
+        while ((entry = vd_next(d, NULL)) != NULL)
         {
-            if (str_icmp(path_ext(e->d_name), "bin") != 0)
+            if (str_icmp(path_ext(entry), "bin") != 0)
                 continue;
             ++bins;
-            path_join(only, sizeof(only), dir, e->d_name);
+            path_join(only, sizeof(only), dir, entry);
             size_t n = strlen(base);
-            if (!same[0] && prefix_icmp(e->d_name, base, n) == 0 && e->d_name[n] == '.')
+            if (!same[0] && prefix_icmp(entry, base, n) == 0 && entry[n] == '.')
                 str_copy(same, sizeof(same), only);
         }
-        closedir(d);
+        vd_close(d);
         if (same[0] && read_iso(same, serial, size))
             return true;
         return bins == 1 && read_iso(only, serial, size);
