@@ -567,7 +567,7 @@ static bool share_word(const char *s)
 static bool rewrite_shares(const char *url, const char *line)
 {
     char path[PSXS5_PATH_MAX], temp[PSXS5_PATH_MAX + 8];
-    path_join(path, sizeof(path), app_paths()->root, "network.cfg");
+    path_join(path, sizeof(path), app.paths.root, "network.cfg");
     snprintf(temp, sizeof(temp), "%s.new", path);
     FILE *in = fopen(path, "r");
     FILE *out = fopen(temp, "w");

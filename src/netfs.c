@@ -16,8 +16,8 @@
 
 #if defined(PSXS5_HAVE_NETFS)
 #include <nfsc/libnfs.h>
+#include <smb2/smb2.h> /* before libsmb2.h, which uses its types */
 #include <smb2/libsmb2.h>
-#include <smb2/smb2.h>
 #endif
 
 enum
