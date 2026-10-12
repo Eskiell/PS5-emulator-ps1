@@ -8,7 +8,7 @@
 
 static void write_log(const char *line) {
   char path[1024];
-  const int length = snprintf(path, sizeof(path), "%s/data/PSX1-Installer/installer.log", plat_root());
+  const int length = snprintf(path, sizeof(path), "%s/data/PSXS5-Installer/installer.log", plat_root());
   if (length <= 0 || (size_t)length >= sizeof(path))
     return;
   const int fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_NOFOLLOW, 0666);

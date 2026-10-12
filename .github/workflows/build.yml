@@ -68,8 +68,8 @@ jobs:
       - name: Upload installer ELF
         uses: actions/upload-artifact@v4
         with:
-          name: PSX1Installer
-          path: build/installer/PSX1Installer.elf
+          name: PSXS5Installer
+          path: build/installer/PSXS5Installer.elf
           if-no-files-found: error
 
       - name: Check system module imports
@@ -133,7 +133,7 @@ jobs:
           path: .
       - uses: actions/download-artifact@v4
         with:
-          name: PSX1Installer
+          name: PSXS5Installer
           path: .
       - name: Package
         run: |
@@ -152,4 +152,4 @@ jobs:
         run: |
           notes=docs/releases/${GITHUB_REF_NAME}.md
           [ -f "$notes" ] || notes=/dev/null
-          gh release create "$GITHUB_REF_NAME" "$ZIP" PSXS5-symbols.txt PSX1Installer.elf --title "PSXS5 ${GITHUB_REF_NAME#v}" --notes-file "$notes"
+          gh release create "$GITHUB_REF_NAME" "$ZIP" PSXS5-symbols.txt PSXS5Installer.elf --title "PSXS5 ${GITHUB_REF_NAME#v}" --notes-file "$notes"
