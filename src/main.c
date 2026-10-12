@@ -34,6 +34,7 @@
 
 #include <dirent.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -194,6 +195,14 @@ void app_restart_covers(void)
 static const char *const DATA_DRIVES[] = {"/mnt/ext0", "/mnt/ext1", "/mnt/usb0", "/mnt/usb1", "/mnt/usb2",
                                           "/mnt/usb3", "/mnt/usb4", "/mnt/usb5", "/mnt/usb6", "/mnt/usb7"};
 
+/* a drive is there: /mnt/usb0 is a folder even with nothing plugged in, but then
+ * it sits on the same device as /mnt */
+static bool drive_mounted(const char *mount)
+{
+    struct stat here, parent;
+    return stat(mount, &here) == 0 && S_ISDIR(here.st_mode) && stat("/mnt", &parent) == 0 && here.st_dev != parent.st_dev;
+}
+
 static bool dir_writable(const char *dir)
 {
     if (!make_dirs(dir))
@@ -225,7 +234,19 @@ static void use_data_location(void)
     fclose(f);
     if (!where[0] || !strcmp(where, app.home_root))
         return;
-    if (dir_writable(where))
+    /* on a drive: that drive mounted (an empty /mnt/ext0 folder isn't one) */
+    char mount[64] = "";
+    if (!strncmp(where, "/mnt/", 5))
+    {
+        const char *end = strchr(where + 5, '/');
+        size_t n = end ? (size_t)(end - where) : strlen(where);
+        if (n < sizeof(mount))
+        {
+            memcpy(mount, where, n);
+            mount[n] = '\0';
+        }
+    }
+    if ((!mount[0] || drive_mounted(mount)) && dir_writable(where))
         config_paths(&app.paths, where);
     else
         str_copy(app.location_missing, sizeof(app.location_missing), where);
@@ -269,7 +290,7 @@ void app_next_data_location(void)
     int count = 0, at = 0;
     str_copy(choices[count++], PSXS5_PATH_MAX, app.home_root);
     for (size_t i = 0; i < sizeof(DATA_DRIVES) / sizeof(DATA_DRIVES[0]); ++i)
-        if (path_is_dir(DATA_DRIVES[i]))
+        if (drive_mounted(DATA_DRIVES[i]))
             path_join(choices[count++], PSXS5_PATH_MAX, DATA_DRIVES[i], "PSXS5");
     for (int i = 0; i < count; ++i)
         if (!strcmp(choices[i], current))
@@ -290,7 +311,9 @@ void app_next_data_location(void)
         }
         str_copy(app.location_next, sizeof(app.location_next), strcmp(next, app.paths.root) ? next : "");
         psxs5_log("data location: %s from the next start", next);
-        app_toast(app.location_next[0] ? "Restart PSXS5 to use the new data location" : "Data location unchanged");
+        char msg[PSXS5_PATH_MAX + 96];
+        snprintf(msg, sizeof(msg), tr("Data location: %s, from the next start of PSXS5"), next);
+        app_toast(msg);
         return;
     }
     app_toast("No other drive found: plug in a USB drive or extended storage");

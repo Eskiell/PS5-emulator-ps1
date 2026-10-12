@@ -1245,6 +1245,9 @@ static const Entry ENTRIES[] = {
     /* ---- 2.3: network shares */
     {{"Network shares changed: %d games on the shelf", "Partages réseau modifiés : %d jeux sur l'étagère", "Partilhas de rede alteradas: %d jogos na prateleira", "Carpetas compartidas cambiadas: %d juegos en la estantería",
       "ネットワーク共有を変更：棚のゲーム %d本"}},
+    /* ---- 2.3: network shares */
+    {{"Data location: %s, from the next start of PSXS5", "Emplacement des données : %s, au prochain démarrage de PSXS5", "Local dos dados: %s, a partir do próximo arranque do PSXS5", "Ubicación de los datos: %s, desde el próximo inicio de PSXS5",
+      "データの保存場所：%s（PSXS5の次回起動から）"}},
 };
 
 #define ENTRY_COUNT (int)(sizeof(ENTRIES) / sizeof(ENTRIES[0]))
