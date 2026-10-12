@@ -138,7 +138,11 @@ static void finish_game(Game *g)
 {
     char serial[16];
     char txt[PSXS5_PATH_MAX];
-    if (disc_read_serial(g->path, serial, sizeof(serial)))
+    /* on a network share the serial comes from the names: opening every disc
+     * there took minutes for a big library */
+    if (netfs_is_url(g->path))
+        ;
+    else if (disc_read_serial(g->path, serial, sizeof(serial)))
         str_copy(g->serial, sizeof(g->serial), serial);
     else
     {
@@ -307,7 +311,8 @@ static void scan_game_folder(Library *lib, const char *dir, const char *folder_n
 }
 
 /* the folders among a root's entries (names sorted, as the entries are) */
-static NameBuf root_dirs[1024];
+#define MAX_ROOT_ENTRIES 32768
+static NameBuf *root_dirs;
 static int root_dir_count;
 
 static bool is_root_dir(const char *name)
@@ -320,20 +325,40 @@ static void scan_root(Library *lib, const char *root)
     VDir *d = vd_open(root); /* a local folder or one on a network share */
     if (!d)
         return;
-    static NameBuf entries[1024];
+    /* as many entries as the folder has (a share's one big folder: thousands) */
+    static NameBuf *entries;
+    static bool *skip;
+    static int room;
     int n = 0;
     root_dir_count = 0;
     const char *name;
     bool dir = false;
-    while ((name = vd_next(d, &dir)) && n < 1024)
+    while ((name = vd_next(d, &dir)) && n < MAX_ROOT_ENTRIES)
     {
         if (name[0] == '.')
             continue;
+        if (n == room)
+        {
+            int more = room ? room * 2 : 1024;
+            NameBuf *e = realloc(entries, sizeof(NameBuf) * (size_t)more);
+            NameBuf *r = e ? realloc(root_dirs, sizeof(NameBuf) * (size_t)more) : NULL;
+            if (e)
+                entries = e;
+            if (r)
+                root_dirs = r;
+            bool *s = r ? realloc(skip, sizeof(bool) * (size_t)more) : NULL;
+            if (!s)
+                break;
+            skip = s;
+            room = more;
+        }
         str_copy(entries[n++], sizeof(NameBuf), name);
         if (dir)
             str_copy(root_dirs[root_dir_count++], sizeof(NameBuf), name);
     }
     vd_close(d);
+    if (n == 0)
+        return;
     qsort(entries, (size_t)n, sizeof(NameBuf), cmp_names);
     qsort(root_dirs, (size_t)root_dir_count, sizeof(NameBuf), cmp_names);
 
@@ -346,8 +371,7 @@ static void scan_root(Library *lib, const char *root)
      * are one game, as in their own folder: the discs a playlist (.m3u) here
      * already lists are skipped, the others get one written, and the shelf
      * shows the game once, from disc 1. */
-    static bool skip[1024];
-    memset(skip, 0, sizeof(skip));
+    memset(skip, 0, sizeof(bool) * (size_t)n);
     for (int i = 0; i < n; ++i)
         if (image_rank(entries[i]) == 6)
         {
@@ -489,6 +513,37 @@ static int cmp_games(const void *a, const void *b)
     return str_icmp(((const Game *)a)->title, ((const Game *)b)->title);
 }
 
+void library_scan_into(Library *lib, const char *root)
+{
+    if (netfs_is_url(root) || path_is_dir(root))
+        scan_root(lib, root);
+}
+
+void library_sort(Library *lib)
+{
+    if (lib->count > 1)
+        qsort(lib->games, (size_t)lib->count, sizeof(Game), cmp_games);
+}
+
+bool library_save_index(const Library *lib, int from, int to, const char *index_path)
+{
+    char temp[PSXS5_PATH_MAX + 8];
+    snprintf(temp, sizeof(temp), "%s.new", index_path);
+    FILE *f = fopen(temp, "w");
+    if (!f)
+        return false;
+    fprintf(f, "# PSXS5's list of a network share's games: title, serial, discs, path, disc name\n");
+    for (int i = from; i < to && i < lib->count; ++i)
+    {
+        const Game *g = &lib->games[i];
+        fprintf(f, "%s\t%s\t%d\t%s\t%s\n", g->title, g->serial, g->discs, g->path, g->disc_name);
+    }
+    bool ok = fclose(f) == 0 && rename(temp, index_path) == 0;
+    if (!ok)
+        remove(temp);
+    return ok;
+}
+
 void library_scan(Library *lib, const char *const *roots, int root_count)
 {
     lib->count = 0;
@@ -500,12 +555,26 @@ void library_scan(Library *lib, const char *const *roots, int root_count)
     psxs5_log("library: %d games", lib->count);
 }
 
+static bool load_index(Library *lib, const char *index_path, bool append);
+
 bool library_load_index(Library *lib, const char *index_path)
+{
+    return load_index(lib, index_path, false);
+}
+
+bool library_append_index(Library *lib, const char *index_path)
+{
+    return load_index(lib, index_path, true);
+}
+
+static bool load_index(Library *lib, const char *index_path, bool append)
 {
     FILE *f = fopen(index_path, "r");
     if (!f)
         return false;
-    lib->count = 0;
+    int first = lib->count;
+    if (!append)
+        lib->count = first = 0;
     char line[1024];
     while (fgets(line, sizeof(line), f))
     {
@@ -544,9 +613,9 @@ bool library_load_index(Library *lib, const char *index_path)
             finish_game(g); /* derive an id from the title */
     }
     fclose(f);
-    if (lib->count > 1)
+    if (!append && lib->count > 1)
         qsort(lib->games, (size_t)lib->count, sizeof(Game), cmp_games);
-    psxs5_log("library: %d games from index %s", lib->count, index_path);
+    psxs5_log("library: %d games from index %s", lib->count - first, index_path);
     return true;
 }
 

@@ -1308,7 +1308,7 @@ static void activate(const Row *r)
         return;
     case SP_NETWORK:
         sfx_play(SFX_SELECT);
-        app_rescan();
+        app_rescan_network();
         {
             char msg[64];
             snprintf(msg, sizeof(msg), tr("%d games on the shelf"), app.library.count);

@@ -343,6 +343,47 @@ static void find_bios(void)
         }
 }
 
+/* Network shares (network.cfg beside the settings, read again each time): each
+ * one's games come from its list in cache/, made when it is looked through
+ * (the first time, then on request): starting needs no server, and a big
+ * share isn't read again at every start. */
+static bool network_refresh;
+
+static void add_network_games(void)
+{
+    char cfg[PSXS5_PATH_MAX], cache[PSXS5_PATH_MAX];
+    path_join(cfg, sizeof(cfg), app.paths.root, "network.cfg");
+    netfs_load(cfg);
+    path_join(cache, sizeof(cache), app.paths.root, "cache");
+    make_dirs(cache);
+    for (int i = 0; i < netfs_share_count(); ++i)
+    {
+        const char *url = netfs_share_url(i);
+        uint32_t h = 2166136261u; /* the list's name: a hash of the address */
+        for (const char *p = url; *p; ++p)
+            h = (h ^ (uint8_t)*p) * 16777619u;
+        char file[48], list[PSXS5_PATH_MAX];
+        snprintf(file, sizeof(file), "share-%08x.txt", (unsigned)h);
+        path_join(list, sizeof(list), cache, file);
+        if (!network_refresh && library_append_index(&app.library, list))
+            continue;
+        int before = app.library.count;
+        library_scan_into(&app.library, url);
+        psxs5_log("netfs: %s: %d games", url, app.library.count - before);
+        if (app.library.count > before || !strcmp(netfs_share_status(i), "connected"))
+            library_save_index(&app.library, before, app.library.count, list);
+    }
+    network_refresh = false;
+    library_sort(&app.library);
+}
+
+/* the shares looked through again (Settings > System > Network shares, the phone page) */
+void app_rescan_network(void)
+{
+    network_refresh = true;
+    app_rescan();
+}
+
 void app_rescan(void)
 {
     static char mount_roots[MOUNT_COUNT * 3][PSXS5_PATH_MAX];
@@ -362,15 +403,6 @@ void app_rescan(void)
                 roots[root_count++] = dir;
         }
     find_bios();
-    /* network shares (network.cfg beside the settings), read again at each scan */
-    if (!app.sandboxed)
-    {
-        char cfg[PSXS5_PATH_MAX];
-        path_join(cfg, sizeof(cfg), app.paths.root, "network.cfg");
-        netfs_load(cfg);
-        for (int i = 0; i < netfs_share_count(); ++i)
-            roots[root_count++] = netfs_share_url(i);
-    }
     char index[PSXS5_PATH_MAX];
     path_join(index, sizeof(index), app.paths.root, "library.txt");
     if (app.sandboxed)
@@ -384,6 +416,7 @@ void app_rescan(void)
         library_scan(&app.library, roots, root_count);
         if (app.library.count == 0)
             library_load_index(&app.library, index);
+        add_network_games();
     }
     shelf_library_changed();
     app_restart_covers();

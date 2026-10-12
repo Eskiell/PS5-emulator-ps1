@@ -917,7 +917,7 @@ void remote_frame(void)
     SDL_UnlockMutex(lock);
     if (rescan)
     {
-        app_rescan(); /* reads network.cfg again and looks through the shares */
+        app_rescan_network(); /* reads network.cfg again and looks through the shares */
         char msg[96];
         snprintf(msg, sizeof(msg), tr("Network shares changed: %d games on the shelf"), app.library.count);
         app_toast(msg);

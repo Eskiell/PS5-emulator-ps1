@@ -60,6 +60,7 @@ void app_draw_game(uint8_t dim);
 void app_state_path(char *out, size_t size, int slot);
 void app_describe_bios(char *out, size_t size);
 void app_rescan(void);
+void app_rescan_network(void);
 void app_next_data_location(void);
 void app_restart_covers(void);
 /* resume: continue from the quick-resume save */
