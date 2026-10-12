@@ -270,7 +270,7 @@ function renderShares(rows) {
       const r = await fetch('/api/share-add', {method: 'POST',
         body: new URLSearchParams({url: url.value.trim(), user: user.value.trim(), password: pass.value})});
       const j = await r.json();
-      sharesMessage = j.ok ? 'Added. The shelf shows its games in a moment.' : (j.error || 'It wasn’t added');
+      sharesMessage = j.ok ? 'Added (saved in ' + j.file + '). PSXS5 is looking through it: its games come on the shelf in a moment.' : (j.error || 'It wasn’t added');
       if (j.ok) { url.value = ''; user.value = ''; }
     } catch (err) {
       sharesMessage = 'PSXS5 isn’t answering.';

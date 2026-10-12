@@ -650,7 +650,9 @@ static void serve_share(int fd, const char *req, size_t req_len, bool add)
     SDL_LockMutex(lock);
     shares_changed = true;
     SDL_UnlockMutex(lock);
-    respond(fd, "200 OK", "application/json", "{\"ok\":true}", 11);
+    char reply[PSXS5_PATH_MAX + 64];
+    int n = snprintf(reply, sizeof(reply), "{\"ok\":true,\"file\":\"%s/network.cfg\"}", app.paths.root);
+    respond(fd, "200 OK", "application/json", reply, (size_t)n);
 }
 
 static void serve_ra_login(int fd, const char *req, size_t req_len)
