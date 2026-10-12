@@ -201,7 +201,7 @@ installer:
 	@bash installer/fetch-deps.sh
 	@$(MAKE) --no-print-directory -C installer ps5 \
 		PS5_PAYLOAD_SDK="$(CURDIR)/.deps/native/ps5-payload-sdk"
-	@python3 tools/validate-loader-elf.py build/installer/PSXS5Installer.elf
+	@python3 tools/validate-loader-elf.py build/installer/PSX1Installer.elf
 
 test-installer:
 	@bash installer/test-host.sh
@@ -325,7 +325,7 @@ help:
 	  'make test-update-check     Run the update-check host tests' \
 	  'make self-update-example   Build the self-update example title and its helper' \
 	  'make test-self-update      Run the self-update host tests' \
-	  'make installer              Build PSXS5Installer.elf for the payload loader' \
+	  'make installer              Build PSX1Installer.elf for the payload loader' \
 	  'make test-installer         Run installer ZIP and filesystem tests' \
 	  'make deploy PS5_HOST=<address>  Build and FTP-deploy the app folder' \
 	  'make undeploy PS5_HOST=<address>  Remove this title from /data/homebrew' \

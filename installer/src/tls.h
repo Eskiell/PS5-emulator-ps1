@@ -1,4 +1,4 @@
-/* PSXS5 Installer: TLS client connections with the built-in CA list. */
+/* PSX1 Installer: TLS client connections with the built-in CA list. */
 #pragma once
 
 #include <stddef.h>

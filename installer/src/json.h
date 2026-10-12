@@ -1,4 +1,4 @@
-/* PSXS5 Installer: JSON reader for the GitHub release API. */
+/* PSX1 Installer: JSON reader for the GitHub release API. */
 #pragma once
 
 #include <stddef.h>

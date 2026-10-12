@@ -1,4 +1,4 @@
-/* PSXS5 Installer: HTTPS/1.1 client, one request per connection. */
+/* PSX1 Installer: HTTPS/1.1 client, one request per connection. */
 #include "http.h"
 
 #include "config.h"

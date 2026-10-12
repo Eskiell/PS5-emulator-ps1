@@ -1,4 +1,4 @@
-/* PSXS5 Installer: Mbed TLS 3.6 settings.
+/* PSX1 Installer: Mbed TLS 3.6 settings.
  * (MBEDTLS_USER_CONFIG_FILE is read at the end of mbedtls_config.h).
  *
  * The installer is a TLS client only: HTTPS to api.github.com, github.com and

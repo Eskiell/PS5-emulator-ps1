@@ -168,7 +168,7 @@ Paths default_paths() {
     p.data = prefix + "/data";
     p.homebrew = p.data + "/homebrew";
     p.app = p.homebrew + "/" TITLE_ID;
-    p.work = p.data + "/PSXS5-Installer";
+    p.work = p.data + "/PSX1-Installer";
     p.archive = p.work + "/release.zip";
     p.staged = p.work + "/staged";
     p.backup = p.work + "/backup";
@@ -254,7 +254,7 @@ bool install_archive(const Paths &p, const std::string &tag, std::string &error)
         return false;
     }
     if (self_update::title_running(p.sandboxes, TITLE_ID) != 0) {
-        error = "PSXS5 is running, or its state cannot be checked";
+        error = "The app is running, or its state cannot be checked";
         return false;
     }
     if (!self_update::remove_tree(p.staged)) {
@@ -290,7 +290,7 @@ bool install_archive(const Paths &p, const std::string &tag, std::string &error)
     }
     // Re-check after extraction; the app must be closed throughout the replacement.
     if (self_update::title_running(p.sandboxes, TITLE_ID) != 0) {
-        error = "PSXS5 started while the update was prepared";
+        error = "The app started while the update was prepared";
         (void)self_update::remove_tree(p.staged);
         return false;
     }
@@ -324,35 +324,35 @@ int run() {
     const Paths p = default_paths();
     std::string error;
     if (!prepare(p, error)) {
-        notify("PSXS5 Installer: %s", error.c_str());
+        notify("PSX1 Installer: %s", error.c_str());
         return 1;
     }
     int lock_fd = -1;
     if (!lock(p, lock_fd)) {
         if (lock_fd >= 0)
             close(lock_fd);
-        notify("PSXS5 Installer: another install is already running");
+        notify("PSX1 Installer: another install is already running");
         return 1;
     }
     // Recovery is repeated under the lock in case another copy finished first.
     if (!recover(p, error)) {
-        notify("PSXS5 Installer: %s", error.c_str());
+        notify("PSX1 Installer: %s", error.c_str());
         unlock(lock_fd);
         return 1;
     }
     if (!mounted_here(p)) {
-        notify("PSXS5 Installer: the mounted app is not the /data folder install");
+        notify("PSX1 Installer: the mounted app is not the /data folder install");
         unlock(lock_fd);
         return 1;
     }
     if (tls_global_init() != 0) {
-        notify("PSXS5 Installer: HTTPS could not start");
+        notify("PSX1 Installer: HTTPS could not start");
         unlock(lock_fd);
         return 1;
     }
     gh_release release{};
     if (gh_latest(&release) != 0 || !valid_tag(release.tag)) {
-        notify("PSXS5 Installer: no usable release (%s)", err_get());
+        notify("PSX1 Installer: no usable release (%s)", err_get());
         tls_global_free();
         unlock(lock_fd);
         return 1;
@@ -360,34 +360,34 @@ int run() {
     std::string current;
     (void)installed_tag(p, current);
     if (!newer_than(release.tag, current)) {
-        notify("PSXS5 is already up to date (%s)", current.c_str());
+        notify("PSX1 is already up to date (%s)", current.c_str());
         tls_global_free();
         unlock(lock_fd);
         return 0;
     }
     if (!has_space(p.work, static_cast<std::uint64_t>(release.asset_size) + (64ULL << 20))) {
-        notify("PSXS5 Installer: not enough free space for the download");
+        notify("PSX1 Installer: not enough free space for the download");
         tls_global_free();
         unlock(lock_fd);
         return 1;
     }
-    notify("PSXS5 Installer: downloading %s", release.tag);
+    notify("PSX1 Installer: downloading %s", release.tag);
     const int download_ok = gh_download(&release, p.archive.c_str(), nullptr, nullptr);
     tls_global_free();
     if (download_ok != 0) {
-        notify("PSXS5 Installer: %s", err_get());
+        notify("PSX1 Installer: %s", err_get());
         unlock(lock_fd);
         return 1;
     }
-    notify("PSXS5 Installer: installing %s", release.tag);
+    notify("PSX1 Installer: installing %s", release.tag);
     const bool installed = install_archive(p, release.tag, error);
     (void)self_update::remove_tree(p.archive);
     if (!installed) {
-        notify("PSXS5 Installer: %s", error.c_str());
+        notify("PSX1 Installer: %s", error.c_str());
         unlock(lock_fd);
         return 1;
     }
-    notify("PSXS5 %s installed. Restart the app to use it.", release.tag);
+    notify("PSX1 %s installed. Restart the app to use it.", release.tag);
     unlock(lock_fd);
     return 0;
 }

@@ -124,7 +124,7 @@ PSXS5 is a hobby project, made for the love of the PS1 library. No company or sc
    ```bash
    python tools/psxs5_sync.py app --app-dir PPSA97510 --host <PS5 IP>
    ```
-   **Alternative:** send `PSXS5Installer.elf` from a release to the console's
+   **Alternative:** send `PSX1Installer.elf` from a release to the console's
    payload loader. It checks this fork's latest release and installs or updates
    the app directly. See [installer details](installer/README.md). It needs no
    FTP upload.

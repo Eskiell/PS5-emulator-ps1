@@ -1,7 +1,7 @@
 /* PSXS5 standalone installer: repository identity and network limits. */
 #pragma once
 
-#define INSTALLER_UA "PSXS5-Installer/1"
+#define INSTALLER_UA "PSX1-Installer/1"
 #define GH_REPO "Eskiell/PS5-emulator-ps1"
 #define GH_API_URL "https://api.github.com/repos/" GH_REPO "/releases/latest"
 #define GH_DOWNLOAD_PREFIX "https://github.com/" GH_REPO "/releases/download/"

@@ -1,4 +1,4 @@
-/* PSXS5 Installer: platform services used by the PS5 build and host tests. */
+/* PSX1 Installer: platform services used by the PS5 build and host tests. */
 #pragma once
 
 #include <stddef.h>

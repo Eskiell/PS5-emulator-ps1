@@ -1,4 +1,4 @@
-/* PSXS5 Installer: GitHub release discovery and verified asset download. */
+/* PSX1 Installer: GitHub release discovery and verified asset download. */
 #include "github.h"
 
 #include "config.h"
@@ -36,7 +36,7 @@ static int allowed_host(const char *host) {
     return 1;
   if (str_ends(host, ".githubusercontent.com"))
     return 1;
-  const char *test = plat_test_env("PSXS5_TEST_ALLOW_HOST"); /* host tests only */
+  const char *test = plat_test_env("PSX1_TEST_ALLOW_HOST"); /* host tests only */
   return test && !strcmp(host, test);
 }
 
@@ -51,7 +51,7 @@ static int collect(void *ctx, const void *data, size_t len) {
 
 int gh_latest(gh_release *out) {
   memset(out, 0, sizeof(*out));
-  const char *api = plat_test_env("PSXS5_TEST_API_URL");
+  const char *api = plat_test_env("PSX1_TEST_API_URL");
   if (!api)
     api = GH_API_URL;
   static const char *const headers[] = {"Accept: application/vnd.github+json", "X-GitHub-Api-Version: 2022-11-28",
@@ -158,7 +158,7 @@ int gh_latest(gh_release *out) {
     goto done;
   }
   /* The address must be exactly the release download of this repository. */
-  const char *prefix = plat_test_env("PSXS5_TEST_DOWNLOAD_PREFIX");
+  const char *prefix = plat_test_env("PSX1_TEST_DOWNLOAD_PREFIX");
   if (!prefix)
     prefix = GH_DOWNLOAD_PREFIX;
   char expect[2048];

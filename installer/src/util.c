@@ -1,4 +1,4 @@
-/* PSXS5 Installer: small helpers. */
+/* PSX1 Installer: small helpers. */
 #include "util.h"
 
 #include <ctype.h>

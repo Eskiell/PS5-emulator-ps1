@@ -24,7 +24,7 @@ MINIZ_NAMES := miniz miniz_tinfl miniz_tdef miniz_zip
 MINIZ_OBJECTS := $(addprefix $(OBJ)/,$(addsuffix .o,$(MINIZ_NAMES)))
 MBED_SRC := $(wildcard $(MBED)/library/*.c)
 MBED_OBJECTS := $(patsubst $(MBED)/library/%.c,$(OBJ)/mbedtls/%.o,$(MBED_SRC))
-OUTPUT := $(OUT)/PSXS5Installer.elf
+OUTPUT := $(OUT)/PSX1Installer.elf
 
 .PHONY: ps5
 ps5: $(OUTPUT)
