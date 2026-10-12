@@ -18,7 +18,7 @@ C_SOURCES := util net tls http json github fsx log plat_ps5
 C_OBJECTS := $(addprefix $(OBJ)/,$(addsuffix .o,$(C_SOURCES)))
 CXX_SOURCES := install main
 CXX_OBJECTS := $(addprefix $(OBJ)/,$(addsuffix .o,$(CXX_SOURCES)))
-SHARED_CXX := $(OBJ)/archive.o $(OBJ)/files.o $(OBJ)/updater.o
+SHARED_CXX := $(OBJ)/archive.o $(OBJ)/files.o
 SHARED_C := $(OBJ)/update_check.o $(OBJ)/self_update_sha256.o
 MINIZ_NAMES := miniz miniz_tinfl miniz_tdef miniz_zip
 MINIZ_OBJECTS := $(addprefix $(OBJ)/,$(addsuffix .o,$(MINIZ_NAMES)))
@@ -42,9 +42,6 @@ $(OBJ)/archive.o: $(ROOT)/examples/self-update-helper/archive.cpp | $(OBJ)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(OBJ)/files.o: $(ROOT)/examples/self-update-helper/files.cpp | $(OBJ)
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
-
-$(OBJ)/updater.o: $(ROOT)/examples/self-update-helper/updater.cpp | $(OBJ)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(OBJ)/update_check.o: $(ROOT)/examples/update-check/update_check.c | $(OBJ)

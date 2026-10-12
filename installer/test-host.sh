@@ -27,6 +27,5 @@ done
     "$root/tests/test_installer.cpp" "$root/installer/src/install.cpp" \
     "$root/examples/self-update-helper/archive.cpp" \
     "$root/examples/self-update-helper/files.cpp" \
-    "$root/examples/self-update-helper/updater.cpp" \
     "$out"/*.o -pthread -o "$out/test_installer"
 "$out/test_installer"

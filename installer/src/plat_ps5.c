@@ -4,17 +4,94 @@
  * sysctl(CTL_KERN, KERN_ARND) and signal() use the SDK's system headers.
  */
 #include "plat.h"
+#include "log.h"
 
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/proc.h>
 #include <sys/sysctl.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/user.h>
 #include <unistd.h>
+
+/* The payload SDK's ps sample uses this layout with sceKernelGetAppInfo. */
+typedef struct {
+  uint32_t app_id;
+  uint64_t reserved1;
+  uint32_t app_type;
+  char title_id[10];
+  char reserved2[0x3c];
+} app_info_t;
+
+int sceKernelGetAppInfo(pid_t pid, app_info_t *info);
+
+int plat_app_running(const char *title_id) {
+  if (!title_id || strlen(title_id) != 9)
+    return -1;
+
+  int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PROC, 0};
+  for (int attempt = 0; attempt < 3; ++attempt) {
+    size_t needed = 0;
+    if (sysctl(mib, 4, NULL, &needed, NULL, 0) != 0 || needed == 0 || needed > (8u << 20)) {
+      log_line("process check: cannot size the PS5 process list (errno %d)", errno);
+      return -1;
+    }
+    const size_t capacity = needed + (16u << 10);
+    unsigned char *buffer = malloc(capacity);
+    if (!buffer) {
+      log_line("process check: cannot allocate %zu bytes", capacity);
+      return -1;
+    }
+    size_t used = capacity;
+    if (sysctl(mib, 4, buffer, &used, NULL, 0) != 0) {
+      const int failure = errno;
+      free(buffer);
+      if (failure == ENOMEM)
+        continue; /* Process list grew between the two sysctl calls. */
+      log_line("process check: cannot read the PS5 process list (errno %d)", failure);
+      return -1;
+    }
+
+    int result = 0;
+    for (size_t offset = 0; offset < used;) {
+      const size_t remaining = used - offset;
+      int stride = 0;
+      if (remaining >= sizeof(stride))
+        memcpy(&stride, buffer + offset, sizeof(stride));
+      if (stride < (int)(offsetof(struct kinfo_proc, ki_comm) + sizeof(((struct kinfo_proc *)0)->ki_comm)) ||
+          (size_t)stride > remaining) {
+        log_line("process check: invalid process record");
+        result = -1;
+        break;
+      }
+      const struct kinfo_proc *process = (const struct kinfo_proc *)(buffer + offset);
+      if (process->ki_pid > 0 && process->ki_stat != SZOMB) {
+        app_info_t info = {0};
+        if (sceKernelGetAppInfo(process->ki_pid, &info) == 0) {
+          if (memcmp(info.title_id, title_id, 9) == 0 && info.title_id[9] == '\0') {
+            result = 1;
+            break;
+          }
+        } else if (strncmp(process->ki_comm, "eboot.bin", sizeof(process->ki_comm)) == 0) {
+          /* An unidentified app process could be PSXS5: do not replace it. */
+          log_line("process check: cannot identify app process %d", process->ki_pid);
+          result = -1;
+        }
+      }
+      offset += (size_t)stride;
+    }
+    free(buffer);
+    return result;
+  }
+  log_line("process check: process list kept changing");
+  return -1;
+}
 
 typedef struct {
   int32_t type;            /* 0x00 */
