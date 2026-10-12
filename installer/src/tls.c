@@ -1,4 +1,4 @@
-/* PSX1 Installer: TLS client connections with Mbed TLS.
+/* PSXS5 Installer: TLS client connections with Mbed TLS.
  *
  * Certificates are always checked (MBEDTLS_SSL_VERIFY_REQUIRED) against the Mozilla CA list compiled in
  * (ca/cacert.pem -> cacert_data.c), with the server name. TLS 1.2 or 1.3. */
@@ -66,7 +66,7 @@ int tls_global_init(void) {
   mbedtls_x509_crt_init(&g_ca);
   mbedtls_ssl_config_init(&g_conf);
 
-  static const char pers[] = "PSX1-Installer";
+  static const char pers[] = "PSXS5-Installer";
   int rc = mbedtls_ctr_drbg_seed(&g_drbg, mbedtls_entropy_func, &g_entropy, (const unsigned char *)pers,
                                  sizeof(pers) - 1);
   if (rc != 0) {
@@ -80,7 +80,7 @@ int tls_global_init(void) {
   }
   if (rc > 0)
     log_line("tls: %d certificates of the CA list could not be read (the others are used)", rc);
-  const char *extra = plat_test_env("PSX1_TEST_CA_FILE"); /* host tests only */
+  const char *extra = plat_test_env("PSXS5_TEST_CA_FILE"); /* host tests only */
   if (extra) {
     sbuf pem;
     sb_init(&pem);
