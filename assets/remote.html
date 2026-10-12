@@ -76,13 +76,20 @@ function el(tag, cls, text) {
   return e;
 }
 
+/* someone is filling a form (a share, a sign-in): the page isn't drawn again under them */
+function typing() {
+  const a = document.activeElement;
+  if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT')) return true;
+  return [...document.querySelectorAll('form input')].some(i => i.value);
+}
+
 async function load() {
   if (busy) return;
   if (data && tab === data.tabs.length) return; /* the Saves tab refreshes itself */
   try {
     const r = await fetch('/api/settings', {cache: 'no-store'});
     data = await r.json();
-    render();
+    if (!typing()) render();
     document.getElementById('status').textContent = '';
   } catch (e) {
     document.getElementById('status').textContent = 'PSXS5 isn’t answering. Is it still open?';
@@ -197,6 +204,7 @@ function renderAccount(rows) {
           body: new URLSearchParams({user: user.value, password: pass.value})});
         const j = await r.json();
         accountMessage = j.ok ? 'Signed in as ' + j.user + '.' : (j.error || 'Sign-in failed');
+        if (j.ok) user.value = '';
       } catch (err) {
         accountMessage = 'PSXS5 isn’t answering.';
       }
@@ -263,6 +271,7 @@ function renderShares(rows) {
         body: new URLSearchParams({url: url.value.trim(), user: user.value.trim(), password: pass.value})});
       const j = await r.json();
       sharesMessage = j.ok ? 'Added. The shelf shows its games in a moment.' : (j.error || 'It wasn’t added');
+      if (j.ok) { url.value = ''; user.value = ''; }
     } catch (err) {
       sharesMessage = 'PSXS5 isn’t answering.';
     }
