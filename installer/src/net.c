@@ -1,4 +1,4 @@
-/* PS5SX2 Installer: TCP connections with time limits (getaddrinfo from the payload SDK's libc). */
+/* PSXS5 Installer: TCP connections with time limits. */
 #include "net.h"
 
 #include "util.h"

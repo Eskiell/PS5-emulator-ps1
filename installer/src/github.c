@@ -1,4 +1,4 @@
-/* PSXS5 Installer: release fetch adapted from Swordpdf/PS5SX2 (GPL-3.0). */
+/* PSXS5 Installer: GitHub release discovery and verified asset download. */
 #include "github.h"
 
 #include "config.h"

@@ -1,14 +1,14 @@
-/* PSXS5 Installer: Mbed TLS 3.6 settings adapted from Swordpdf/PS5SX2
+/* PSXS5 Installer: Mbed TLS 3.6 settings.
  * (MBEDTLS_USER_CONFIG_FILE is read at the end of mbedtls_config.h).
  *
  * The installer is a TLS client only: HTTPS to api.github.com, github.com and
  * release-assets.githubusercontent.com. Platform access goes through our own code:
  *   - sockets: src/net.c (no MBEDTLS_NET_C);
  *   - entropy: mbedtls_hardware_poll() uses the kernel's random generator;
- *   - no files: the CA bundle is compiled in (src/cacert.c).
+ *   - no CA file on PS5: the bundle is compiled into cacert_data.c.
  */
-#ifndef PS5SX2_MBEDTLS_USER_CONFIG_H
-#define PS5SX2_MBEDTLS_USER_CONFIG_H
+#ifndef PSXS5_MBEDTLS_USER_CONFIG_H
+#define PSXS5_MBEDTLS_USER_CONFIG_H
 
 /* Platform glue we don't use. */
 #undef MBEDTLS_NET_C

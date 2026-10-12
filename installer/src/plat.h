@@ -1,4 +1,4 @@
-/* PS5SX2 Installer: what differs between the PS5 and the host test build. */
+/* PSXS5 Installer: platform services used by the PS5 build and host tests. */
 #pragma once
 
 #include <stddef.h>
@@ -7,8 +7,7 @@
 /* Put in front of logical paths ("/data/..."): empty on the PS5. */
 const char *plat_root(void);
 
-/* A PS5 system notification (debug style, text only), like the helper's "PS5SX2 Helper Loaded!".
- * On the host: a line on stderr and in $PS5SX2_ROOT/notifications.txt. */
+/* Show a text-only PS5 system notification; host tests provide a stub. */
 void plat_notify_text(const char *text);
 
 /* The kernel's random numbers; 0 on success. No weak fallback. */

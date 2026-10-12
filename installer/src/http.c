@@ -1,4 +1,4 @@
-/* PS5SX2 Installer: a small HTTPS/1.1 client. One request per connection ("Connection: close"). */
+/* PSXS5 Installer: HTTPS/1.1 client, one request per connection. */
 #include "http.h"
 
 #include "config.h"

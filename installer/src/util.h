@@ -1,4 +1,4 @@
-/* PS5SX2 Installer: small helpers (growing buffers, strings, errors, time). */
+/* PSXS5 Installer: small helpers (growing buffers, strings, errors, time). */
 #pragma once
 
 #include <stdarg.h>

@@ -1,4 +1,4 @@
-/* PS5SX2 Installer: TCP connections with time limits. */
+/* PSXS5 Installer: TCP connections with time limits. */
 #pragma once
 
 #include <stddef.h>

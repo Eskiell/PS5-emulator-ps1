@@ -1,4 +1,4 @@
-/* PS5SX2 Installer: a small, strict JSON reader (RFC 8259), depth-limited. */
+/* PSXS5 Installer: strict, depth-limited JSON reader (RFC 8259). */
 #include "json.h"
 
 #include "util.h"

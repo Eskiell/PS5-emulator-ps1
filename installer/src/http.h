@@ -1,4 +1,4 @@
-/* PS5SX2 Installer: a small HTTPS/1.1 client (GET and POST, redirects, chunked bodies). */
+/* PSXS5 Installer: HTTPS/1.1 client (GET and POST, redirects, chunked bodies). */
 #pragma once
 
 #include "util.h"

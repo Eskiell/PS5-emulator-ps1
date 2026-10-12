@@ -1,4 +1,4 @@
-/* PS5SX2 Installer: TLS client connections (Mbed TLS), certificates checked against the built-in CA list. */
+/* PSXS5 Installer: TLS client connections with the built-in CA list. */
 #pragma once
 
 #include <stddef.h>

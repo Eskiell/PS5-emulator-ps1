@@ -1,9 +1,7 @@
-/* PS5SX2 Installer: the PS5 side of plat.h.
+/* PSXS5 Installer: PS5 implementation of plat.h.
  *
- * Every system call here has a known signature:
- *   - sceKernelSendNotificationRequest: as in the payload SDK's notify samples, with the request laid out
- *     like OnionHEN's debug toast (the helper's "PS5SX2 Helper Loaded!");
- *   - sysctl(CTL_KERN, KERN_ARND), kill(pid, 0), signal(): FreeBSD's own, from the SDK headers.
+ * The notification request layout follows the payload SDK's samples.
+ * sysctl(CTL_KERN, KERN_ARND) and signal() use the SDK's system headers.
  */
 #include "plat.h"
 

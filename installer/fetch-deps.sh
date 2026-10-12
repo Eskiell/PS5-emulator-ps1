@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fetch Mbed TLS 3.6.7 with the SHA-256 used by the PS5SX2 installer.
+# Fetch the pinned Mbed TLS 3.6.7 source and verify its SHA-256.
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 cache="$root/.deps/installer"

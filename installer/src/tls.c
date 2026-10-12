@@ -1,4 +1,4 @@
-/* PS5SX2 Installer: TLS client connections with Mbed TLS.
+/* PSXS5 Installer: TLS client connections with Mbed TLS.
  *
  * Certificates are always checked (MBEDTLS_SSL_VERIFY_REQUIRED) against the Mozilla CA list compiled in
  * (ca/cacert.pem -> cacert_data.c), with the server name. TLS 1.2 or 1.3. */

@@ -1,4 +1,4 @@
-/* PS5SX2 Installer: a small, strict JSON reader (enough for GitHub's release API). */
+/* PSXS5 Installer: JSON reader for the GitHub release API. */
 #pragma once
 
 #include <stddef.h>
