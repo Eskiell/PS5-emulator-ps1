@@ -248,13 +248,35 @@ bool installed_tag(const Paths &p, std::string &tag) {
     return read_version(p.app + "/.psxs5-version", tag);
 }
 
+bool wait_for_app_exit(const Paths &p, unsigned seconds, std::string &error) {
+    int running = self_update::title_running(p.sandboxes, TITLE_ID);
+    if (running < 0) {
+        error = "Cannot check whether PSXS5 is open; no app files were replaced";
+        return false;
+    }
+    if (running == 0)
+        return true;
+    notify("PSXS5 Installer: close PSXS5 to continue");
+    for (unsigned elapsed = 0; elapsed < seconds; ++elapsed) {
+        sleep(1);
+        running = self_update::title_running(p.sandboxes, TITLE_ID);
+        if (running == 0)
+            return true;
+        if (running < 0) {
+            error = "Cannot check whether PSXS5 closed; no app files were replaced";
+            return false;
+        }
+    }
+    error = "PSXS5 is still open; close it and send the installer again";
+    return false;
+}
+
 bool install_archive(const Paths &p, const std::string &tag, std::string &error) {
     if (!valid_tag(tag)) {
         error = "The release tag is not a stable version";
         return false;
     }
-    if (self_update::title_running(p.sandboxes, TITLE_ID) != 0) {
-        error = "PSXS5 is running, or its state cannot be checked";
+    if (!wait_for_app_exit(p, 0, error)) {
         return false;
     }
     if (!self_update::remove_tree(p.staged)) {
@@ -289,8 +311,7 @@ bool install_archive(const Paths &p, const std::string &tag, std::string &error)
         return false;
     }
     // Re-check after extraction; the app must be closed throughout the replacement.
-    if (self_update::title_running(p.sandboxes, TITLE_ID) != 0) {
-        error = "PSXS5 started while the update was prepared";
+    if (!wait_for_app_exit(p, 0, error)) {
         (void)self_update::remove_tree(p.staged);
         return false;
     }
@@ -364,6 +385,12 @@ int run() {
         tls_global_free();
         unlock(lock_fd);
         return 0;
+    }
+    if (!wait_for_app_exit(p, 300, error)) {
+        notify("PSXS5 Installer: %s", error.c_str());
+        tls_global_free();
+        unlock(lock_fd);
+        return 1;
     }
     if (!has_space(p.work, static_cast<std::uint64_t>(release.asset_size) + (64ULL << 20))) {
         notify("PSXS5 Installer: not enough free space for the download");

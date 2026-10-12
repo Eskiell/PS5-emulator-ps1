@@ -7,6 +7,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <thread>
+#include <chrono>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -117,9 +119,22 @@ int main() {
     make_zip(p.archive, "v2.2.1", "second program");
     const std::string sandbox = p.sandboxes + "/PPSA97510_000";
     CHECK(mkdir(sandbox.c_str(), 0755) == 0);
+    CHECK(!psxs5_installer::wait_for_app_exit(p, 0, error));
+    CHECK(error.find("still open") != std::string::npos);
     CHECK(!psxs5_installer::install_archive(p, "v2.2.1", error));
     CHECK(read_file(p.app + "/eboot.bin") == "first program");
-    CHECK(rmdir(sandbox.c_str()) == 0);
+    int close_result = -1;
+    std::thread close_app([&sandbox, &close_result] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        close_result = rmdir(sandbox.c_str());
+    });
+    CHECK(psxs5_installer::wait_for_app_exit(p, 2, error));
+    close_app.join();
+    CHECK(close_result == 0);
+    CHECK(rmdir(p.sandboxes.c_str()) == 0);
+    CHECK(!psxs5_installer::wait_for_app_exit(p, 0, error));
+    CHECK(error.find("Cannot check") != std::string::npos);
+    CHECK(mkdir(p.sandboxes.c_str(), 0755) == 0);
 
     CHECK(psxs5_installer::install_archive(p, "v2.2.1", error));
     CHECK(read_file(p.app + "/eboot.bin") == "second program");
