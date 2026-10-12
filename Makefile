@@ -10,16 +10,16 @@ SHELL := /bin/bash
 # v2: Vulkan through the linked RADV driver (APP_VULKAN=0 builds without it).
 APP_VULKAN ?= 1
 ifeq ($(APP_VULKAN),1)
-APP_DEFINITIONS ?= PSXS5_HAVE_CURL=1 PSXS5_VULKAN=1
+APP_DEFINITIONS ?= PSXS5_HAVE_CURL=1 PSXS5_VULKAN=1 PSXS5_HAVE_NETFS=1
 PSXS5_VULKAN_INCLUDE := .deps/native/radv-release/include
 else
-APP_DEFINITIONS ?= PSXS5_HAVE_CURL=1
+APP_DEFINITIONS ?= PSXS5_HAVE_CURL=1 PSXS5_HAVE_NETFS=1
 endif
 # PSXS5: the PCSX-ReARMed core is linked as a static libretro archive.
 PSXS5_CORE := build/core-ps5/libpcsx_rearmed.a
 # RetroAchievements: rcheevos (MIT), built by tools/build-rcheevos.sh.
 PSXS5_RCHEEVOS := build/rcheevos-ps5/librcheevos.a
-APP_INCLUDE_PATHS ?= third_party/pcsx_rearmed/deps/libretro-common/include third_party/stb examples/update-check third_party/rcheevos/include $(PSXS5_VULKAN_INCLUDE)
+APP_INCLUDE_PATHS ?= third_party/pcsx_rearmed/deps/libretro-common/include third_party/stb examples/update-check third_party/rcheevos/include $(PSXS5_VULKAN_INCLUDE) build/netfs-ps5/include
 ifeq ($(APP_VULKAN),1)
 # v2: Beetle PSX HW (Vulkan renderer), built by tools/build-beetle.sh
 PSXS5_BEETLE := build/beetle-ps5/libbeetle_psx.a
@@ -29,7 +29,9 @@ PSXS5_SWANSTATION := build/swanstation-ps5/libswanstation.a
 # Frame generation (AMD FSR 3's frame interpolation, from PS5SX2), built by tools/build-framegen.sh
 PSXS5_FRAMEGEN := build/framegen-ps5/libframegen.a
 endif
-APP_STATIC_ARCHIVES ?= $(PSXS5_CORE) $(PSXS5_RCHEEVOS) $(PSXS5_BEETLE) $(PSXS5_SWANSTATION) $(PSXS5_FRAMEGEN)
+# Network shares: libsmb2 and libnfs (LGPL-2.1), built by tools/build-netfs.sh
+PSXS5_NETFS := build/netfs-ps5/libnetfs.a
+APP_STATIC_ARCHIVES ?= $(PSXS5_CORE) $(PSXS5_RCHEEVOS) $(PSXS5_BEETLE) $(PSXS5_SWANSTATION) $(PSXS5_FRAMEGEN) $(PSXS5_NETFS)
 APP_RUNTIME_MODULES ?=
 # fcntl: console_curl. The allocator family: ps5_heap.c (the C heap is too small).
 APP_WRAP_SYMBOLS ?= fcntl malloc free calloc realloc reallocf memalign posix_memalign aligned_alloc malloc_usable_size
@@ -261,6 +263,7 @@ endif
 core:
 	@bash tools/build-core.sh ps5
 	@bash tools/build-rcheevos.sh ps5
+	@bash tools/build-netfs.sh
 ifeq ($(APP_VULKAN),1)
 	@bash tools/build-beetle.sh
 	@bash tools/fetch-radv.sh
