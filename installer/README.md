@@ -11,10 +11,12 @@ On each run it:
    and reads the `PSXS5-vX.Y.Z.zip` asset's size and SHA-256 from GitHub.
 2. Compares the tag with `/data/homebrew/PPSA97510/.psxs5-version`. An
    installation without that marker is treated as an older manual install.
-3. Downloads the ZIP over verified HTTPS, with a size limit and SHA-256 check.
-4. Validates the archive's paths, file types, title ID and version, then
+3. If PSXS5 is open, asks you to close it and waits up to five minutes before
+   downloading. It stops if the console cannot confirm that the app is closed.
+4. Downloads the ZIP over verified HTTPS, with a size limit and SHA-256 check.
+5. Validates the archive's paths, file types, title ID and version, then
    extracts it under `/data/PSXS5-Installer/staged`.
-5. When PSXS5 is closed, moves the old app to a backup and puts the staged
+6. When PSXS5 is closed, moves the old app to a backup and puts the staged
    app in `/data/homebrew/PPSA97510`. If power fails between those moves,
    the next run restores the old app.
 
